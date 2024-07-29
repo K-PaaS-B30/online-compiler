@@ -1,18 +1,24 @@
 package b3o.onlinecompiler.entity;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@Getter
+@AllArgsConstructor
 public enum Language {
-    C(".c"),
-    CPP(".cpp"),
-    JAVA(".java"),
-    Python(".py");
+    JAVA("javac", "java", ".java", "");
 
-    private final String extension;
+    private final String buildCommand;
+    private final String executeCommand;
+    private final String sourceExtension;
+    private final String executableExtension;
 
-    Language(String extension) {
-        this.extension = extension;
+    public String[] generateBuildCommand(String fileName){
+        return new String[]{ this.buildCommand, fileName };
     }
 
-    public String getExtension() {
-        return this.extension;
+    public String[] generateExecuteCommand(String fileName) {
+        fileName = fileName.replace(this.sourceExtension, this.executableExtension);
+        return new String[]{ this.executeCommand, fileName };
     }
 }

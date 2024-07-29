@@ -1,10 +1,10 @@
 package b3o.onlinecompiler.service;
 
-import b3o.onlinecompiler.container.DockerManager;
-import b3o.onlinecompiler.container.file.converter.CodeConverter;
-import b3o.onlinecompiler.container.file.generator.DockerFileGenerator;
+import b3o.onlinecompiler.container.abstraction.CodeConverter;
+import b3o.onlinecompiler.container.abstraction.ContainerManager;
 import b3o.onlinecompiler.dto.request.CompileRequestDto;
 import b3o.onlinecompiler.dto.response.CompileResponseDto;
+import b3o.onlinecompiler.entity.Language;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,17 +14,17 @@ import java.io.IOException;
 @Service
 public class CompileService {
     @Autowired
-    DockerManager dockerManager;
+    ContainerManager containerManager;
+
+    @Autowired
+    CodeConverter sourceFileGenerator;
 
     public CompileResponseDto compile(CompileRequestDto compileRequestDto) throws IOException {
-        String fileExtension = compileRequestDto.getLanguage().getExtension();
+        Language language = compileRequestDto.getLanguage();
         String text = compileRequestDto.getSourceCode();
 
-        File sourceFile = CodeConverter.generate(text, fileExtension);
-        File dockerFile = DockerFileGenerator.create(sourceFile.getName());
+        File sourceFile = sourceFileGenerator.textToSourceFile(text, language);
 
-        String output = dockerManager.run(sourceFile, dockerFile);
-
-        return CompileResponseDto.builder().output(output).build();
+        return CompileResponseDto.fromContext(containerManager.run(sourceFile, compileRequestDto.getLanguage()));
     }
 }
