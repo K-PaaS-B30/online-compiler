@@ -23,7 +23,7 @@ public class CompileService {
         File sourceFile = CodeConverter.generate(text, fileExtension);
         File dockerFile = DockerFileGenerator.create(sourceFile.getName());
 
-        String output = dockerManager.start(sourceFile, dockerFile);
+        String output = dockerManager.run(sourceFile, dockerFile);
 
         return CompileResponseDto.builder().output(output).build();
     }
