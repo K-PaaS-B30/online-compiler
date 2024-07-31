@@ -1,0 +1,4 @@
+FROM openjdk:11.0.6-jdk-slim
+WORKDIR /
+USER root
+CMD ["sh", "-c", "while :; do sleep 2073600; done"]
