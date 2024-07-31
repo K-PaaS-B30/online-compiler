@@ -1,11 +1,12 @@
 package b3o.onlinecompiler.container.callback;
 
 import b3o.onlinecompiler.entity.ContainerContext;
-import b3o.onlinecompiler.entity.ContainerStatus;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.StreamType;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
 import lombok.AllArgsConstructor;
+
+import java.io.IOException;
 
 @AllArgsConstructor
 public class LogCaptureCallback extends ExecStartResultCallback {
@@ -15,16 +16,23 @@ public class LogCaptureCallback extends ExecStartResultCallback {
     public void onNext(Frame frame) {
         try {
             if (frame.getStreamType() == StreamType.STDOUT) {
-                context.getContainerStdout().write(frame.getPayload());
+                writeStdout(frame.getPayload());
 
             } else if (frame.getStreamType() == StreamType.STDERR) {
-                context.setStatus(ContainerStatus.CONTAINER_FAILURE);
-                context.getContainerStderr().write(frame.getPayload());
+                writeStderr(frame.getPayload());
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            context.failure();
         }
 
         super.onNext(frame);
+    }
+
+    private void writeStdout(byte[] payload) throws IOException {
+        context.getContainerStdout().write(payload);
+    }
+
+    private void writeStderr(byte[] payload) throws IOException {
+        context.getContainerStderr().write(payload);
     }
 }

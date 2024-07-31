@@ -18,7 +18,7 @@ public class CompileController {
     private CompileService compileService;
 
     @PostMapping("/compile")
-    public CompileResponseDto compile(@RequestBody CompileRequestDto compileRequestDto) throws IOException {
+    public CompileResponseDto compile(@RequestBody CompileRequestDto compileRequestDto) {
         return compileService.compile(compileRequestDto);
     }
 }

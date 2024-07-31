@@ -1,18 +1,19 @@
 package b3o.onlinecompiler.container.implementation;
 
 import b3o.onlinecompiler.entity.ContainerContext;
-import b3o.onlinecompiler.entity.ContainerStatus;
 import b3o.onlinecompiler.container.abstraction.ContainerManager;
 import b3o.onlinecompiler.container.callback.LogCaptureCallback;
 import b3o.onlinecompiler.entity.Language;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.BuildImageResultCallback;
+import com.github.dockerjava.api.command.WaitContainerResultCallback;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.io.*;
 
-
+@Log4j2
 @Component
 public class DockerManager implements ContainerManager {
     @Autowired
@@ -22,6 +23,8 @@ public class DockerManager implements ContainerManager {
     private String DOCKER_FILE_PATH;
 
     private ContainerContext createContainer() {
+        long startTime = System.nanoTime();
+
         String imageId = dockerClient.buildImageCmd()
                 .withDockerfile(new File(DOCKER_FILE_PATH))
                 .exec(new BuildImageResultCallback())
@@ -31,7 +34,13 @@ public class DockerManager implements ContainerManager {
                 .exec()
                 .getId();
 
-        return ContainerContext.create(imageId, containerId);
+        long endTime = System.nanoTime();
+
+        log.info("Image build success, image id [" + imageId + "]");
+
+        log.info("Container create success, container id [" + containerId + "]");
+
+        return ContainerContext.create(imageId, containerId, startTime, endTime);
     }
 
     @Override
@@ -42,20 +51,21 @@ public class DockerManager implements ContainerManager {
                 .withHostResource(sourceFile.getAbsolutePath())
                 .exec();
 
+        log.info("Move source file [" + sourceFile.getName() + "] to Container id [" + context.getContainerId() + "]");
+
         dockerClient.startContainerCmd(context.getContainerId())
                 .exec();
 
-        context.setStatus(ContainerStatus.CONTAINER_BUILD);
-        exec(context, language.generateBuildCommand(sourceFile.getName()));
+        log.info("Container id [" + context.getContainerId() + "] is start");
 
-        context.setStatus(ContainerStatus.CONTAINER_EXECUTE);
+        exec(context, language.generateBuildCommand(sourceFile.getName()));
         exec(context, language.generateExecuteCommand(sourceFile.getName()));
 
         return context;
     }
 
     private ContainerContext exec(ContainerContext context, String[] commands){
-        context.setStartTime(System.nanoTime());
+        context.start();
 
         String execId = dockerClient.execCreateCmd(context.getContainerId())
                 .withCmd(commands)
@@ -69,9 +79,15 @@ public class DockerManager implements ContainerManager {
                     .exec(new LogCaptureCallback(context))
                     .awaitCompletion();
         } catch (InterruptedException e){
-            context.setStatus(ContainerStatus.CONTAINER_FAILURE);
+            context.failure();
         } finally {
-            context.setEndTime(System.nanoTime());
+            context.end();
+            context.nextStatus();
+
+            log.info("Execute command : [" + commands[0] + "] [" + commands[1] + "]");
+            log.info("Duration time : " + Math.abs((context.getEndTime() - context.getStartTime()) / 1_000_000_000.0));
+            log.info("[Container stdout]\n" + context.getContainerStdout());
+            log.info("[Container stderr]\n" + context.getContainerStderr());
         }
 
         return context;
@@ -79,23 +95,43 @@ public class DockerManager implements ContainerManager {
 
     @Override
     public ContainerContext stop(ContainerContext context) {
+        context.start();
+
         dockerClient.stopContainerCmd(context.getContainerId())
                 .exec();
 
-        context.setStatus(ContainerStatus.CONTAINER_STOP);
+        try {
+            dockerClient.waitContainerCmd(context.getContainerId())
+                    .exec(new WaitContainerResultCallback())
+                    .awaitCompletion();
+        } catch (InterruptedException e) {
+            log.error("container stop exception");
+            throw new RuntimeException("Container stop exception");
+        }
+
+        context.end();
+        context.nextStatus();
+
+        log.info("Container id [" + context.getContainerId() + "] is stop");
 
         return context;
     }
 
     @Override
     public ContainerContext remove(ContainerContext context) {
+        context.start();
+
         dockerClient.removeContainerCmd(context.getContainerId())
                 .exec();
 
         dockerClient.removeImageCmd(context.getImageId())
                 .exec();
 
-        context.setStatus(ContainerStatus.CONTAINER_REMOVE);
+        context.end();
+        context.nextStatus();
+
+        log.info("Image id : [" + context.getImageId() + "] is remove");
+        log.info("Container id : [" + context.getContainerId() + "] is remove");
 
         return context;
     }
