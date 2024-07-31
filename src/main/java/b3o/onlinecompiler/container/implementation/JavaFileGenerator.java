@@ -2,6 +2,7 @@ package b3o.onlinecompiler.container.implementation;
 
 import b3o.onlinecompiler.container.abstraction.CodeConverter;
 import b3o.onlinecompiler.entity.Language;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedWriter;
@@ -12,7 +13,8 @@ import java.util.UUID;
 
 @Component
 public class JavaFileGenerator implements CodeConverter {
-    private String FILE_STORRE_PATH = System.getenv("FILE_STORE_PATH");
+    @Value("${file.store.path}")
+    private String FILE_STORE_PATH;
 
     @Override
     public File textToSourceFile(String text, Language language) {
@@ -21,7 +23,7 @@ public class JavaFileGenerator implements CodeConverter {
         fileName = fileName.replaceAll("-", "");
         text = modifyClassName(text, fileName);
 
-        File sourceFile = new File( FILE_STORRE_PATH + "/" + fileName + language.getSourceExtension());
+        File sourceFile = new File(FILE_STORE_PATH, fileName + language.getSourceExtension());
 
         try {
             FileWriter fw = new FileWriter(sourceFile);

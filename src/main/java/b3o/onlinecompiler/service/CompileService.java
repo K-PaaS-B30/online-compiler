@@ -19,7 +19,7 @@ public class CompileService {
     @Autowired
     CodeConverter sourceFileGenerator;
 
-    public CompileResponseDto compile(CompileRequestDto compileRequestDto) throws IOException {
+    public CompileResponseDto compile(CompileRequestDto compileRequestDto) {
         Language language = compileRequestDto.getLanguage();
         String text = compileRequestDto.getSourceCode();
 

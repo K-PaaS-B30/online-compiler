@@ -8,6 +8,7 @@ import b3o.onlinecompiler.entity.Language;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.BuildImageResultCallback;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.io.*;
 
@@ -15,13 +16,14 @@ import java.io.*;
 @Component
 public class DockerManager implements ContainerManager {
     @Autowired
-    DockerClient dockerClient;
+    private DockerClient dockerClient;
+
+    @Value("${docker.file.path}")
+    private String DOCKER_FILE_PATH;
 
     private ContainerContext createContainer() {
-        String manifestPath = System.getenv("DOCKERFILE_PATH");
-
         String imageId = dockerClient.buildImageCmd()
-                .withDockerfile(new File(manifestPath))
+                .withDockerfile(new File(DOCKER_FILE_PATH))
                 .exec(new BuildImageResultCallback())
                 .awaitImageId();
 
