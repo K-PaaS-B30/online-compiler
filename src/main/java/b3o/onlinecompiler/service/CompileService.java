@@ -28,8 +28,8 @@ public class CompileService {
         CompileResponseDto response = CompileResponseDto.fromContext(context);
 
         containerManager.stop(context);
-        containerManager.remove(context);
 
         return response;
     }
+
 }
